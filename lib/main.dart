@@ -4,100 +4,140 @@ void main() {
   runApp(const FocusTrackApp());
 }
 
-/// Widget raiz inmutable que configura el tema visual de la aplicacion
+enum Priority {
+  low(
+    'Low',
+    Icons.arrow_downward,
+    Color(0xFF546E7A),
+    'Relaxed pace, keep a steady rhythm.',
+  ),
+  medium(
+    'Medium',
+    Icons.remove,
+    Color(0xFFEF6C00),
+    'Balanced pace, stay focused on your goals.',
+  ),
+  high(
+    'High',
+    Icons.priority_high,
+    Color(0xFFB71C1C),
+    'Maximum focus, every goal counts today.',
+  );
+
+  const Priority(this.label, this.icon, this.color, this.message);
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final String message;
+}
+
 class FocusTrackApp extends StatelessWidget {
   const FocusTrackApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FocusTrack Móvil',
+      title: 'FocusTrack Mobile',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          //seedColor: const Color(0xFF1A237E), // Azul Índigo Universitario
-          seedColor: const Color(0xFF00796B), // Verde Esmeralda
+          seedColor: const Color(0xFF00796B),
           brightness: Brightness.light,
         ),
         appBarTheme: const AppBarTheme(centerTitle: true, elevation: 2),
       ),
-      home: const PantallaPrincipalMetas(),
+      home: const MainGoalsScreen(),
     );
   }
 }
 
-/// Pantalla con estado reactivo para registrar metas y productividad
-class PantallaPrincipalMetas extends StatefulWidget {
-  const PantallaPrincipalMetas({super.key});
+class MainGoalsScreen extends StatefulWidget {
+  const MainGoalsScreen({super.key});
 
   @override
-  State<PantallaPrincipalMetas> createState() => _PantallaPrincipalMetasState();
+  State<MainGoalsScreen> createState() => _MainGoalsScreenState();
 }
 
-class _PantallaPrincipalMetasState extends State<PantallaPrincipalMetas> {
-  int _metasCompletadas = 0;
-  final int _metaObjetivo = 5;
-  String _nivelProductividad = 'Inicial';
+class _MainGoalsScreenState extends State<MainGoalsScreen> {
+  static const int _maxDailyGoals = 10;
 
-  void _actualizarNivel() {
-    if (_metasCompletadas == 0) {
-      _nivelProductividad = 'Inicial';
-    } else if (_metasCompletadas < _metaObjetivo) {
-      _nivelProductividad = 'En Progreso';
-    } else if (_metasCompletadas == _metaObjetivo) {
-      _nivelProductividad = '¡Objetivo Alcanzado!';
+  int _completedGoals = 0;
+  final int _goalTarget = 5;
+  String _productivityLevel = 'Initial';
+  Priority _priority = Priority.low;
+
+  void _updateLevel() {
+    if (_completedGoals == 0) {
+      _productivityLevel = 'Initial';
+    } else if (_completedGoals < _goalTarget) {
+      _productivityLevel = 'In Progress';
+    } else if (_completedGoals == _goalTarget) {
+      _productivityLevel = 'Goal Reached!';
     } else {
-      _nivelProductividad =
-          '¡Sobresaliente (+${_metasCompletadas - _metaObjetivo})!';
+      _productivityLevel = 'Outstanding (+${_completedGoals - _goalTarget})!';
     }
   }
 
-  void _incrementarMeta() {
+  void _incrementGoal() {
+    if (_completedGoals >= _maxDailyGoals) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'You have reached the maximum daily goal limit (10/10). '
+            'Great job today!',
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
     setState(() {
-      _metasCompletadas++;
-      _actualizarNivel();
+      _completedGoals++;
+      _updateLevel();
     });
   }
 
-  void _decrementarMeta() {
+  void _decrementGoal() {
     setState(() {
-      if (_metasCompletadas > 0) {
-        _metasCompletadas--;
-        _actualizarNivel();
+      if (_completedGoals > 0) {
+        _completedGoals--;
+        _updateLevel();
       }
     });
   }
 
-  void _reiniciarContadores() {
+  void _resetCounters() {
     showDialog(
       context: context,
       builder: (BuildContext ctx) {
         return AlertDialog(
-          title: const Text('Confirmar Reinicio'),
+          title: const Text('Confirm Reset'),
           content: const Text(
-            '¿Desea restablecer todas las metas completadas a cero?',
+            'Do you want to reset all completed goals to zero?',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancelar'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () {
                 setState(() {
-                  _metasCompletadas = 0;
-                  _actualizarNivel();
+                  _completedGoals = 0;
+                  _updateLevel();
                 });
                 Navigator.of(ctx).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Metas restablecidas exitosamente.'),
+                    content: Text('Goals reset successfully.'),
                     duration: Duration(seconds: 2),
                   ),
                 );
               },
-              child: const Text('Reiniciar'),
+              child: const Text('Reset'),
             ),
           ],
         );
@@ -107,31 +147,30 @@ class _PantallaPrincipalMetasState extends State<PantallaPrincipalMetas> {
 
   @override
   Widget build(BuildContext context) {
-    final tema = Theme.of(context);
-    final colores = tema.colorScheme;
-    final porcentaje = (_metasCompletadas / _metaObjetivo).clamp(0.0, 1.0);
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final progress = (_completedGoals / _goalTarget).clamp(0.0, 1.0);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('FocusTrack Móvil'),
-        backgroundColor: colores.primaryContainer,
-        foregroundColor: colores.onPrimaryContainer,
+        title: const Text('FocusTrack Mobile'),
+        backgroundColor: colors.primaryContainer,
+        foregroundColor: colors.onPrimaryContainer,
         actions: [
           IconButton(
             icon: const Icon(Icons.restart_alt),
-            tooltip: 'Reiniciar sesión de metas',
-            onPressed: _reiniciarContadores,
+            tooltip: 'Reset goals session',
+            onPressed: _resetCounters,
           ),
         ],
       ),
-      // SafeArea garantiza visualizacion correcta fuera del notch
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Tarjeta de Resumen Ejecutivo
+              // Summary card
               Card(
                 elevation: 3.0,
                 shape: RoundedRectangleBorder(
@@ -144,53 +183,53 @@ class _PantallaPrincipalMetasState extends State<PantallaPrincipalMetas> {
                       Icon(
                         Icons.track_changes,
                         size: 52.0,
-                        color: colores.primary,
+                        color: colors.primary,
                       ),
                       const SizedBox(height: 12.0),
                       Text(
-                        'Progreso del Día',
-                        style: tema.textTheme.titleMedium?.copyWith(
+                        "Today's Progress",
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 8.0),
                       Text(
-                        '$_metasCompletadas / $_metaObjetivo',
-                        style: tema.textTheme.displayMedium?.copyWith(
+                        '$_completedGoals / $_goalTarget',
+                        style: theme.textTheme.displayMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: colores.primary,
+                          color: colors.primary,
                         ),
                       ),
                       const SizedBox(height: 12.0),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8.0),
                         child: LinearProgressIndicator(
-                          value: porcentaje,
+                          value: progress,
                           minHeight: 10.0,
-                          backgroundColor: colores.surfaceContainerHighest,
+                          backgroundColor: colors.surfaceContainerHighest,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            _metasCompletadas >= _metaObjetivo
+                            _completedGoals >= _goalTarget
                                 ? Colors.teal
-                                : colores.primary,
+                                : colors.primary,
                           ),
                         ),
                       ),
                       const SizedBox(height: 12.0),
                       Chip(
                         avatar: Icon(
-                          _metasCompletadas >= _metaObjetivo
+                          _completedGoals >= _goalTarget
                               ? Icons.emoji_events
                               : Icons.bolt,
-                          color: colores.onSecondaryContainer,
+                          color: colors.onSecondaryContainer,
                         ),
                         label: Text(
-                          _nivelProductividad,
+                          _productivityLevel,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: colores.onSecondaryContainer,
+                            color: colors.onSecondaryContainer,
                           ),
                         ),
-                        backgroundColor: colores.secondaryContainer,
+                        backgroundColor: colors.secondaryContainer,
                       ),
                     ],
                   ),
@@ -198,47 +237,84 @@ class _PantallaPrincipalMetasState extends State<PantallaPrincipalMetas> {
               ),
               const SizedBox(height: 24.0),
 
-              // Panel de Informacion Tecnica
+              // Priority selector
+              SegmentedButton<Priority>(
+                segments: Priority.values
+                    .map(
+                      (Priority p) => ButtonSegment<Priority>(
+                        value: p,
+                        label: Text(p.label),
+                        icon: Icon(p.icon),
+                      ),
+                    )
+                    .toList(),
+                selected: {_priority},
+                showSelectedIcon: false,
+                onSelectionChanged: (Set<Priority> selection) {
+                  setState(() {
+                    _priority = selection.first;
+                  });
+                },
+                style: ButtonStyle(
+                  backgroundColor: WidgetStateProperty.resolveWith<Color?>((
+                    Set<WidgetState> states,
+                  ) {
+                    if (states.contains(WidgetState.selected)) {
+                      return _priority.color;
+                    }
+                    return null;
+                  }),
+                  foregroundColor: WidgetStateProperty.resolveWith<Color?>((
+                    Set<WidgetState> states,
+                  ) {
+                    if (states.contains(WidgetState.selected)) {
+                      return Colors.white;
+                    }
+                    return null;
+                  }),
+                ),
+              ),
+              const SizedBox(height: 24.0),
+
+              // Info panel
               Card(
                 elevation: 1.0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.0),
-                  side: BorderSide(color: colores.outlineVariant),
+                  side: BorderSide(color: _priority.color, width: 2.0),
                 ),
-                child: const ListTile(
-                  leading: Icon(Icons.info_outline),
-                  title: Text('Sesión Móvil Activa'),
-                  subtitle: Text(
-                    'Renderizado nativo impulsado por el motor Impeller '
-                    'y gestionado con Hot Reload.',
-                  ),
+                child: ListTile(
+                  leading: Icon(_priority.icon, color: _priority.color),
+                  title: Text('${_priority.label} Priority Session'),
+                  subtitle: Text(_priority.message),
                 ),
               ),
             ],
           ),
         ),
       ),
-      // Botones Flotantes de Accion
+
+      // Floating action buttons
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton(
-            heroTag: 'btn_decrementar',
-            onPressed: _decrementarMeta,
-            tooltip: 'Restar meta completada',
-            backgroundColor: colores.surfaceContainerHighest,
-            foregroundColor: colores.onSurfaceVariant,
+            heroTag: 'btn_decrement',
+            onPressed: _decrementGoal,
+            tooltip: 'Remove completed goal',
+            backgroundColor: colors.surfaceContainerHighest,
+            foregroundColor: colors.onSurfaceVariant,
             child: const Icon(Icons.remove),
           ),
           const SizedBox(width: 14.0),
           FloatingActionButton.extended(
-            heroTag: 'btn_incrementar',
-            onPressed: _incrementarMeta,
-            tooltip: 'Completar meta',
-            backgroundColor: colores.primary,
-            foregroundColor: colores.onPrimary,
+            heroTag: 'btn_increment',
+            onPressed: _incrementGoal,
+            tooltip: 'Complete goal',
+            backgroundColor: colors.primary,
+            foregroundColor: colors.onPrimary,
             icon: const Icon(Icons.check),
-            label: const Text('Completar Meta'),
+            label: const Text('Complete Goal'),
           ),
         ],
       ),
